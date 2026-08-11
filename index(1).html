@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ПогосКафе — заказ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Work+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #f7ecd9;
+    --bg-white: #fffaf3;
+    --bg-caramel: #f6ddb0;
+    --bg-card: #fffdf8;
+    --ink: #3b2415;
+    --ink-dim: #8a6c50;
+    --accent: #c9822a;
+    --accent-light: #eecb92;
+    --line: rgba(59,36,21,0.14);
+    --error: #c0392b;
+    --shadow: 0 6px 18px rgba(59,36,21,0.08);
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Work Sans', sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .screen{
+    display: none;
+    min-height: 100vh;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 110px 24px 40px;
+    animation: fadeIn 0.4s ease;
+  }
+  .screen.active{ display: flex; }
+
+  @keyframes fadeIn{
+    from{ opacity: 0; transform: translateY(10px); }
+    to{ opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---------- ЛОГОТИП ---------- */
+  .brand{
+    position: fixed;
+    top: 18px;
+    right: 22px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 60;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .brand .cup-emoji{ font-size: 22px; }
+  .brand span{
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--accent);
+  }
+
+  /* ---------- ВЕРХНЯЯ ПАНЕЛЬ: НАЗАД + ШАГИ ---------- */
+  .topbar{
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: none;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px 12px;
+    background: linear-gradient(var(--bg) 60%, transparent);
+    z-index: 55;
+  }
+  .topbar.visible{ display: flex; }
+
+  .back-btn{
+    flex-shrink: 0;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg-card);
+    color: var(--ink);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .back-btn:hover{ border-color: var(--accent); color: var(--accent); }
+
+  .progress-dots{
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .progress-dots::-webkit-scrollbar{ display: none; }
+
+  .dot-item{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .dot-circle{
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--line);
+    transition: background 0.2s, transform 0.2s;
+  }
+  .dot-item.done .dot-circle{ background: var(--accent-light); }
+  .dot-item.active .dot-circle{ background: var(--accent); transform: scale(1.5); }
+  .dot-label{
+    font-family: 'Work Sans', sans-serif;
+    font-size: 10px;
+    color: var(--ink-dim);
+    white-space: nowrap;
+  }
+  .dot-item.active .dot-label{ color: var(--ink); font-weight: 600; }
+
+  /* ---------- ЭКРАН 1: ПРИВЕТСТВИЕ ---------- */
+  #screen-welcome{
+    position: relative;
+    padding-top: 40px;
+  }
+  #screen-welcome::before{
+    content:"";
+    position: absolute; inset: 0;
+    opacity: 0.5;
+    background-image:
+      radial-gradient(ellipse 16px 24px at 10% 20%, #e2c690 45%, transparent 46%),
+      radial-gradient(ellipse 14px 20px at 82% 12%, #e2c690 45%, transparent 46%),
+      radial-gradient(ellipse 18px 26px at 60% 75%, #e2c690 45%, transparent 46%),
+      radial-gradient(ellipse 12px 18px at 22% 82%, #e2c690 45%, transparent 46%),
+      radial-gradient(ellipse 15px 22px at 92% 60%, #e2c690 45%, transparent 46%),
+      radial-gradient(ellipse 13px 19px at 42% 38%, #e2c690 45%, transparent 46%);
+    pointer-events: none;
+  }
+  .welcome-inner{ position: relative; text-align: center; max-width: 480px; }
+  .welcome-cup{ font-size: 46px; margin-bottom: 6px; }
+  .welcome-eyebrow{
+    font-family: 'Work Sans', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 14px;
+  }
+  h1.welcome-title{
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: clamp(32px, 7vw, 48px);
+    line-height: 1.15;
+    margin-bottom: 40px;
+    color: var(--ink);
+  }
+  .lang-buttons{ display: flex; flex-direction: column; gap: 12px; }
+  .lang-btn{
+    font-family: 'Work Sans', sans-serif;
+    font-size: 16px;
+    color: var(--ink);
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 16px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .lang-btn:hover{ border-color: var(--accent); transform: translateY(-2px); }
+
+  /* ---------- ЗАГОЛОВКИ ШАГОВ ---------- */
+  .step-title{
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: clamp(26px, 6vw, 34px);
+    margin-bottom: 6px;
+    text-align: center;
+    color: var(--ink);
+  }
+  .step-subtitle{
+    font-size: 14.5px;
+    color: var(--ink-dim);
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  /* ---------- КАРТОЧКИ (напиток / молоко / сахар / вкус) ---------- */
+  .card-grid{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 14px;
+    width: 100%;
+    max-width: 460px;
+  }
+  .card-grid.single-col{ grid-template-columns: 1fr; max-width: 380px; }
+
+  .opt-card{
+    background: var(--bg-card);
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 14px;
+    text-align: center;
+    cursor: pointer;
+    font-family: 'Work Sans', sans-serif;
+    font-weight: 500;
+    font-size: 15.5px;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .opt-card .opt-emoji{ font-size: 30px; display: block; margin-bottom: 8px; }
+  .opt-card:hover{ border-color: var(--accent); transform: translateY(-2px); }
+  .opt-card.selected{ border-color: var(--accent); background: #fff6e6; }
+  .opt-card.secret{ border-color: var(--accent); background: linear-gradient(135deg, #fff2d9, #fff); }
+
+  /* ---------- ФОН ПО ТЕМЕ ШАГА ---------- */
+  #screen-drink{ background: var(--bg); }
+  #screen-milk{ background: var(--bg-white); }
+  #screen-sugar{ background: var(--bg-caramel); }
+  #screen-flavor{
+    background: var(--bg);
+    position: relative;
+  }
+  #screen-flavor::before{
+    content:"";
+    position: absolute; inset: 0;
+    opacity: 0.35;
+    background-image:
+      radial-gradient(ellipse 16px 24px at 12% 18%, #d9b877 45%, transparent 46%),
+      radial-gradient(ellipse 14px 20px at 85% 22%, #d9b877 45%, transparent 46%),
+      radial-gradient(ellipse 18px 26px at 55% 80%, #d9b877 45%, transparent 46%),
+      radial-gradient(ellipse 12px 18px at 25% 78%, #d9b877 45%, transparent 46%);
+    pointer-events: none;
+  }
+  #screen-flavor > *{ position: relative; }
+  #screen-name{ background: var(--bg); }
+
+  /* ---------- ЭКРАН: ИМЯ + ПОЧТА ---------- */
+  .form-wrap{ width: 100%; max-width: 400px; margin: 0 auto; }
+  .field{ margin-bottom: 20px; }
+  .field label{
+    display: block;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 8px;
+  }
+  .field input[type="text"], .field input[type="email"]{
+    width: 100%;
+    background: var(--bg-card);
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    padding: 13px 14px;
+    color: var(--ink);
+    font-family: 'Work Sans', sans-serif;
+    font-size: 15px;
+  }
+  .field input:focus{ outline: none; border-color: var(--accent); }
+  .field-error{ color: var(--error); font-size: 12.5px; margin-top: 6px; display: none; }
+  .field-error.show{ display: block; }
+  .field input.error{ border-color: var(--error); }
+
+  .submit-btn{
+    width: 100%;
+    margin-top: 10px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 15px;
+    font-family: 'Work Sans', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: opacity 0.2s;
+  }
+  .submit-btn:hover{ opacity: 0.9; }
+  .submit-btn:disabled{ opacity: 0.5; cursor: default; }
+
+  /* ---------- МОДАЛКА ПОДТВЕРЖДЕНИЯ ---------- */
+  .modal-overlay{
+    position: fixed; inset: 0;
+    background: rgba(59,36,21,0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 24px;
+  }
+  .modal-overlay.open{ display: flex; }
+  .modal{
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 28px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 20px 40px rgba(59,36,21,0.2);
+  }
+  .modal h3{ font-family: 'Fraunces', serif; font-size: 22px; color: var(--accent); margin-bottom: 14px; }
+  .modal p{ font-size: 14.5px; color: var(--ink-dim); line-height: 1.7; margin-bottom: 22px; white-space: pre-line; }
+  .modal-buttons{ display: flex; gap: 10px; }
+  .modal-buttons button{ flex: 1; padding: 12px; border-radius: 10px; font-size: 14px; cursor: pointer; font-family: 'Work Sans', sans-serif; }
+  .btn-yes{ background: var(--accent); color: #fff; border: none; font-weight: 600; }
+  .btn-no{ background: transparent; color: var(--ink-dim); border: 1px solid var(--line); }
+
+  /* ---------- ЭКРАН: СПАСИБО ---------- */
+  #screen-thanks{ text-align: center; padding-top: 40px; }
+  .thanks-emoji{ font-size: 54px; margin-bottom: 18px; }
+  #screen-thanks h2{ font-family: 'Fraunces', serif; font-size: clamp(26px, 6vw, 36px); margin-bottom: 14px; }
+  #screen-thanks p{ color: var(--ink-dim); font-size: 15px; max-width: 340px; }
+
+  .send-error{ color: var(--error); text-align: center; font-size: 13px; margin-top: 14px; display: none; }
+  .send-error.show{ display: block; }
+
+  /* ---------- БОЛЬШОЕ ОКНО ПАСХАЛКИ ---------- */
+  .secret-overlay{
+    position: fixed; inset: 0;
+    background: rgba(59,36,21,0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+    padding: 24px;
+  }
+  .secret-overlay.open{ display: flex; }
+  .secret-modal{
+    position: relative;
+    max-width: 420px;
+    width: 100%;
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 40px 28px 32px;
+    text-align: center;
+    border: 3px solid var(--accent);
+    animation: secretPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), borderRainbow 2.4s linear infinite;
+  }
+  @keyframes secretPop{ from{ transform: scale(0.85); opacity: 0; } to{ transform: scale(1); opacity: 1; } }
+  @keyframes borderRainbow{
+    0%{ border-color: var(--accent); }
+    33%{ border-color: #e0745f; }
+    66%{ border-color: #7fb87f; }
+    100%{ border-color: var(--accent); }
+  }
+  .secret-close{
+    position: absolute; top: 14px; left: 14px;
+    background: var(--bg-white); border: 1px solid var(--line);
+    color: var(--ink-dim); width: 32px; height: 32px; border-radius: 50%;
+    font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .secret-close:hover{ border-color: var(--accent); color: var(--accent); }
+  .secret-emoji{ font-size: 42px; margin-bottom: 14px; }
+  .secret-modal h3{ font-family: 'Fraunces', serif; font-size: 24px; color: var(--accent); margin-bottom: 10px; }
+  .secret-modal p{ font-size: 14.5px; color: var(--ink-dim); line-height: 1.6; margin-bottom: 22px; }
+  .secret-box{ background: #fff6e6; border: 1px solid var(--accent); border-radius: 10px; padding: 16px; }
+  .secret-box span{ display: block; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 6px; }
+  .secret-box strong{ font-family: 'Fraunces', serif; font-size: 18px; color: var(--accent); }
+
+  @keyframes flashColors{
+    0%, 100%{ box-shadow: 0 0 0 0 transparent; }
+    20%{ box-shadow: 0 0 0 5px rgba(201,130,42,0.6); }
+    45%{ box-shadow: 0 0 0 5px rgba(224,116,95,0.6); }
+    70%{ box-shadow: 0 0 0 5px rgba(127,184,127,0.6); }
+  }
+  .flash-glow{ animation: flashColors 0.7s ease-in-out 3; border-radius: 10px; }
+
+  @media (max-width: 380px){
+    .card-grid{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ЛОГОТИП -->
+<div class="brand" id="brand-logo" aria-label="ПогосКафе">
+  <span class="cup-emoji">☕</span>
+  <span>ПогосКафе</span>
+</div>
+
+<!-- ВЕРХНЯЯ ПАНЕЛЬ: НАЗАД + ШАГИ -->
+<div class="topbar" id="topbar">
+  <button class="back-btn" id="back-btn" aria-label="Назад">←</button>
+  <div class="progress-dots" id="progress-dots"></div>
+</div>
+
+<!-- ЭКРАН 1: ПРИВЕТСТВИЕ / ЯЗЫК -->
+<section class="screen active" id="screen-welcome">
+  <div class="welcome-inner">
+    <div class="welcome-cup">☕</div>
+    <div class="welcome-eyebrow">Своё зерно · своя обжарка</div>
+    <h1 class="welcome-title">Добро пожаловать<br>в наше кафе</h1>
+    <div class="lang-buttons">
+      <button class="lang-btn" onclick="selectLang('ru')">Продолжить на русском</button>
+      <button class="lang-btn" onclick="selectLang('en')">Continue in English</button>
+      <button class="lang-btn" onclick="selectLang('fr')">Continuer en français</button>
+    </div>
+  </div>
+</section>
+
+<!-- ЭКРАН: НАПИТОК -->
+<section class="screen" id="screen-drink">
+  <h2 class="step-title" id="drink-title"></h2>
+  <p class="step-subtitle" id="drink-subtitle"></p>
+  <div class="card-grid" id="drink-grid"></div>
+</section>
+
+<!-- ЭКРАН: МОЛОКО -->
+<section class="screen" id="screen-milk">
+  <h2 class="step-title" id="milk-title"></h2>
+  <p class="step-subtitle" id="milk-subtitle"></p>
+  <div class="card-grid single-col" id="milk-grid"></div>
+</section>
+
+<!-- ЭКРАН: САХАР -->
+<section class="screen" id="screen-sugar">
+  <h2 class="step-title" id="sugar-title"></h2>
+  <p class="step-subtitle" id="sugar-subtitle"></p>
+  <div class="card-grid" id="sugar-grid"></div>
+</section>
+
+<!-- ЭКРАН: ВКУС -->
+<section class="screen" id="screen-flavor">
+  <h2 class="step-title" id="flavor-title"></h2>
+  <p class="step-subtitle" id="flavor-subtitle"></p>
+  <div class="card-grid single-col" id="flavor-grid"></div>
+</section>
+
+<!-- ЭКРАН: ИМЯ + ПОЧТА -->
+<section class="screen" id="screen-name">
+  <div class="form-wrap">
+    <h2 class="step-title" id="name-title"></h2>
+    <p class="step-subtitle" id="name-subtitle"></p>
+
+    <div class="field">
+      <label id="label-name"></label>
+      <input type="text" id="input-name" autocomplete="name">
+      <div class="field-error" id="error-name"></div>
+    </div>
+
+    <div class="field">
+      <label id="label-email"></label>
+      <input type="email" id="input-email" autocomplete="email">
+      <div class="field-error" id="error-email"></div>
+    </div>
+
+    <button class="submit-btn" id="submit-btn"></button>
+    <div class="send-error" id="send-error"></div>
+  </div>
+</section>
+
+<!-- ЭКРАН: СПАСИБО -->
+<section class="screen" id="screen-thanks">
+  <div class="thanks-emoji">☕✨</div>
+  <h2 id="thanks-title"></h2>
+  <p id="thanks-text"></p>
+</section>
+
+<!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <p id="modal-text"></p>
+    <div class="modal-buttons">
+      <button class="btn-no" id="modal-no"></button>
+      <button class="btn-yes" id="modal-yes"></button>
+    </div>
+  </div>
+</div>
+
+<!-- БОЛЬШОЕ ОКНО ПАСХАЛКИ -->
+<div class="secret-overlay" id="secret-modal-overlay">
+  <div class="secret-modal">
+    <button class="secret-close" id="secret-close" aria-label="Закрыть">✕</button>
+    <div class="secret-emoji">🎉</div>
+    <h3 id="secret-modal-title"></h3>
+    <p id="secret-modal-text"></p>
+    <div class="secret-box">
+      <span id="secret-box-label"></span>
+      <strong id="secret-box-flavor"></strong>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ НАСТРОЙКИ ============ */
+const BACKEND_URL = 'https://menudelapogocafe4-3.onrender.com/order';
+
+/* ============ СТРУКТУРНЫЕ ДАННЫЕ (без перевода) ============ */
+// Тут решаем, какие шаги нужны для какого напитка.
+// needsMilk: false — напиток чёрный, шаг "молоко" пропускается
+// needsFlavor: false — напиток не про кофеин/декаф (например какао/мокко), шаг "вкус" пропускается
+const DRINK_IDS = ['latte','americano','iceLatte','cappuccino','mocha','icedMocha'];
+const DRINK_CONFIG = {
+  latte:      { emoji: '🥛', needsMilk: true,  needsFlavor: true },
+  americano:  { emoji: '☕', needsMilk: false, needsFlavor: true },
+  iceLatte:   { emoji: '🧊', needsMilk: true,  needsFlavor: true },
+  cappuccino: { emoji: '☕', needsMilk: true,  needsFlavor: true },
+  mocha:      { emoji: '🍫', needsMilk: true,  needsFlavor: false },
+  icedMocha:  { emoji: '🍧', needsMilk: true,  needsFlavor: false }
+};
+
+const MILK_IDS = ['regular','lactoseFree','plant'];
+const MILK_EMOJI = { regular: '🥛', lactoseFree: '🚫', plant: '🌱' };
+
+const FLAVOR_IDS = ['decaf','caffeine','chocolate'];
+const FLAVOR_EMOJI = { decaf: '🌙', caffeine: '⚡', chocolate: '🍫', dubai: '✨' };
+
+/* ============ ПЕРЕВОДЫ ============ */
+const T = {
+  ru: {
+    stepLabels: { drink:'Напиток', milk:'Молоко', sugar:'Сахар', flavor:'Вкус', name:'Имя' },
+    drinkTitle: 'Что будете заказывать?',
+    drinkSubtitle: 'Выберите напиток',
+    drinkLabels: { latte:'Латте', americano:'Американо', iceLatte:'Айс-латте', cappuccino:'Капучино', mocha:'Мокко', icedMocha:'Холодный мокко' },
+    milkTitle: 'Какое молоко?',
+    milkSubtitle: 'Подберём под ваш вкус',
+    milkLabels: { regular:'Обычное', lactoseFree:'Без лактозы', plant:'Растительное (альтернатива)' },
+    noMilk: 'Без молока',
+    sugarTitle: 'Сколько сахара?',
+    sugarSubtitle: 'Можно совсем без сахара',
+    sugarLabel: (n) => n === 0 ? 'Без сахара' : n === 1 ? '1 ложка' : `${n} ложки`,
+    flavorTitle: 'Вкус кофе',
+    flavorSubtitle: 'Кофеин или без',
+    flavorLabels: { decaf:'Без кофеина', caffeine:'С кофеином', chocolate:'Со вкусом лёгкого шоколада', dubai:'Дубайский шоколад (Limited)' },
+    autoChocolate: 'Шоколадный вкус (уже включён)',
+    nameTitle: 'Ещё пара деталей',
+    nameSubtitle: 'Чтобы мы знали, кому и куда написать',
+    labelName: 'Как вас зовут',
+    placeholderName: 'ваше имя',
+    errorName: 'Пожалуйста, укажите ваше имя',
+    labelEmail: 'Ваша почта',
+    placeholderEmail: 'мы напишем, когда кофе будет готов',
+    errorEmail: 'Пожалуйста, укажите вашу почту',
+    submitBtn: 'Оформить заказ',
+    sending: 'Отправляем…',
+    sendError: 'Не удалось отправить заказ. Проверьте соединение и попробуйте ещё раз.',
+    modalTitle: 'Вы уверены?',
+    modalText: (o) => `Напиток: ${o.drink}\nМолоко: ${o.milk}\nСахар: ${o.sugarLabel}\nВкус: ${o.flavor}\nИмя: ${o.name}\nПочта: ${o.email}`,
+    modalYes: 'Да, я уверен(а)',
+    modalNo: 'Нет, хочу изменить',
+    thanksTitle: 'Спасибо за заказ!',
+    thanksText: 'Наш лучший бариста уже готовит ваш кофе. Мы напишем на почту, как только он будет готов ☕',
+    secretModalTitle: 'Секретное меню',
+    secretModalText: 'Поздравляем, вы нашли секретное меню! Мы очень рады, что вы это заметили 🎉',
+    secretBoxLabel: 'Вы получили вкус'
+  },
+  en: {
+    stepLabels: { drink:'Drink', milk:'Milk', sugar:'Sugar', flavor:'Flavor', name:'Name' },
+    drinkTitle: 'What would you like?',
+    drinkSubtitle: 'Choose your drink',
+    drinkLabels: { latte:'Latte', americano:'Americano', iceLatte:'Iced Latte', cappuccino:'Cappuccino', mocha:'Mocha', icedMocha:'Iced Mocha' },
+    milkTitle: 'Which milk?',
+    milkSubtitle: "We'll match your taste",
+    milkLabels: { regular:'Regular', lactoseFree:'Lactose-free', plant:'Plant-based (alternative)' },
+    noMilk: 'No milk',
+    sugarTitle: 'How much sugar?',
+    sugarSubtitle: 'None at all works too',
+    sugarLabel: (n) => n === 0 ? 'No sugar' : n === 1 ? '1 spoon' : `${n} spoons`,
+    flavorTitle: 'Coffee flavor',
+    flavorSubtitle: 'Caffeine or not',
+    flavorLabels: { decaf:'Decaf', caffeine:'Regular (with caffeine)', chocolate:'Light chocolate flavor', dubai:'Dubai Chocolate (Limited)' },
+    autoChocolate: 'Chocolate flavor (already included)',
+    nameTitle: 'A couple more details',
+    nameSubtitle: "So we know who and where to write",
+    labelName: 'Your name',
+    placeholderName: 'your name',
+    errorName: 'Please enter your name',
+    labelEmail: 'Your email',
+    placeholderEmail: "we'll write when your coffee is ready",
+    errorEmail: 'Please enter your email',
+    submitBtn: 'Place order',
+    sending: 'Sending…',
+    sendError: "Couldn't send your order. Check your connection and try again.",
+    modalTitle: 'Are you sure?',
+    modalText: (o) => `Drink: ${o.drink}\nMilk: ${o.milk}\nSugar: ${o.sugarLabel}\nFlavor: ${o.flavor}\nName: ${o.name}\nEmail: ${o.email}`,
+    modalYes: "Yes, I'm sure",
+    modalNo: 'No, let me change it',
+    thanksTitle: 'Thanks for your order!',
+    thanksText: "Our best barista is preparing your coffee. We'll email you the moment it's ready ☕",
+    secretModalTitle: 'Secret Menu',
+    secretModalText: "Congratulations, you found the secret menu! We're so happy you noticed 🎉",
+    secretBoxLabel: 'You unlocked the flavor'
+  },
+  fr: {
+    stepLabels: { drink:'Boisson', milk:'Lait', sugar:'Sucre', flavor:'Saveur', name:'Prénom' },
+    drinkTitle: 'Que souhaitez-vous commander ?',
+    drinkSubtitle: 'Choisissez votre boisson',
+    drinkLabels: { latte:'Latte', americano:'Americano', iceLatte:'Latte glacé', cappuccino:'Cappuccino', mocha:'Moka', icedMocha:'Moka glacé' },
+    milkTitle: 'Quel lait ?',
+    milkSubtitle: 'Selon votre goût',
+    milkLabels: { regular:'Normal', lactoseFree:'Sans lactose', plant:'Végétal (alternative)' },
+    noMilk: 'Sans lait',
+    sugarTitle: 'Combien de sucre ?',
+    sugarSubtitle: 'Sans sucre, ça marche aussi',
+    sugarLabel: (n) => n === 0 ? 'Sans sucre' : n === 1 ? '1 cuillère' : `${n} cuillères`,
+    flavorTitle: 'Saveur du café',
+    flavorSubtitle: 'Avec ou sans caféine',
+    flavorLabels: { decaf:'Décaféiné', caffeine:'Normal (avec caféine)', chocolate:'Léger goût chocolat', dubai:'Chocolat de Dubaï (Édition limitée)' },
+    autoChocolate: 'Goût chocolat (déjà inclus)',
+    nameTitle: 'Encore quelques détails',
+    nameSubtitle: 'Pour savoir à qui et où écrire',
+    labelName: 'Votre prénom',
+    placeholderName: 'votre prénom',
+    errorName: 'Veuillez indiquer votre prénom',
+    labelEmail: 'Votre email',
+    placeholderEmail: 'nous vous écrirons quand votre café sera prêt',
+    errorEmail: 'Veuillez indiquer votre email',
+    submitBtn: 'Passer la commande',
+    sending: 'Envoi…',
+    sendError: "Impossible d'envoyer la commande. Vérifiez votre connexion et réessayez.",
+    modalTitle: 'Êtes-vous sûr(e) ?',
+    modalText: (o) => `Boisson : ${o.drink}\nLait : ${o.milk}\nSucre : ${o.sugarLabel}\nSaveur : ${o.flavor}\nPrénom : ${o.name}\nEmail : ${o.email}`,
+    modalYes: 'Oui, je suis sûr(e)',
+    modalNo: 'Non, je veux modifier',
+    thanksTitle: 'Merci pour votre commande !',
+    thanksText: 'Notre meilleur barista prépare votre café. Nous vous écrirons dès qu\'il sera prêt ☕',
+    secretModalTitle: 'Menu secret',
+    secretModalText: 'Félicitations, vous avez trouvé le menu secret ! Nous sommes ravis que vous l\'ayez remarqué 🎉',
+    secretBoxLabel: 'Vous avez débloqué la saveur'
+  }
+};
+
+/* ============ СОСТОЯНИЕ ЗАКАЗА ============ */
+const order = {
+  lang: 'ru',
+  drinkId: null, drink: '',
+  milkId: null, milk: '',
+  sugar: null, sugarLabel: '',
+  flavorId: null, flavor: '',
+  name: '', email: ''
+};
+let secretUnlocked = false;
+let stepOrder = ['screen-drink'];
+let currentStepIdx = 0;
+
+/* ============ НАВИГАЦИЯ ============ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function selectLang(lang){
+  order.lang = lang;
+  stepOrder = ['screen-drink'];
+  currentStepIdx = 0;
+  document.getElementById('topbar').classList.add('visible');
+  renderDrinkScreen();
+  goToStep(0);
+}
+
+function computeSteps(drinkId){
+  const cfg = DRINK_CONFIG[drinkId];
+  const steps = ['screen-drink'];
+  if (cfg.needsMilk) steps.push('screen-milk');
+  steps.push('screen-sugar');
+  if (cfg.needsFlavor) steps.push('screen-flavor');
+  steps.push('screen-name');
+  return steps;
+}
+
+function goToStep(idx){
+  currentStepIdx = idx;
+  const id = stepOrder[idx];
+  renderStep(id);
+  showScreen(id);
+  renderTopbar();
+}
+
+function nextStep(){
+  if (currentStepIdx < stepOrder.length - 1) goToStep(currentStepIdx + 1);
+}
+
+function prevStep(){
+  if (currentStepIdx > 0){
+    goToStep(currentStepIdx - 1);
+  } else {
+    document.getElementById('topbar').classList.remove('visible');
+    showScreen('screen-welcome');
+  }
+}
+
+document.getElementById('back-btn').addEventListener('click', prevStep);
+
+function renderStep(id){
+  const t = T[order.lang];
+  if (id === 'screen-drink') renderDrinkScreen();
+  if (id === 'screen-milk') renderMilkScreen();
+  if (id === 'screen-sugar') renderSugarScreen();
+  if (id === 'screen-flavor') renderFlavorScreen();
+  if (id === 'screen-name') renderNameScreen();
+}
+
+function renderTopbar(){
+  const t = T[order.lang];
+  const wrap = document.getElementById('progress-dots');
+  wrap.innerHTML = '';
+  stepOrder.forEach((screenId, i) => {
+    const key = screenId.replace('screen-', '');
+    const item = document.createElement('div');
+    item.className = 'dot-item' + (i === currentStepIdx ? ' active' : (i < currentStepIdx ? ' done' : ''));
+    item.innerHTML = `<div class="dot-circle"></div><div class="dot-label">${t.stepLabels[key] || ''}</div>`;
+    wrap.appendChild(item);
+  });
+}
+
+/* ============ ШАГ: НАПИТОК ============ */
+function renderDrinkScreen(){
+  const t = T[order.lang];
+  document.getElementById('drink-title').textContent = t.drinkTitle;
+  document.getElementById('drink-subtitle').textContent = t.drinkSubtitle;
+  const grid = document.getElementById('drink-grid');
+  grid.innerHTML = '';
+  DRINK_IDS.forEach(id => {
+    const cfg = DRINK_CONFIG[id];
+    const card = document.createElement('button');
+    card.className = 'opt-card' + (order.drinkId === id ? ' selected' : '');
+    card.innerHTML = `<span class="opt-emoji">${cfg.emoji}</span>${t.drinkLabels[id]}`;
+    card.onclick = () => {
+      order.drinkId = id;
+      order.drink = t.drinkLabels[id];
+      if (!cfg.needsMilk){ order.milkId = null; order.milk = t.noMilk; }
+      if (!cfg.needsFlavor){ order.flavorId = null; order.flavor = t.autoChocolate; }
+      stepOrder = computeSteps(id);
+      goToStep(1);
+    };
+    grid.appendChild(card);
+  });
+}
+
+/* ============ ШАГ: МОЛОКО ============ */
+function renderMilkScreen(){
+  const t = T[order.lang];
+  document.getElementById('milk-title').textContent = t.milkTitle;
+  document.getElementById('milk-subtitle').textContent = t.milkSubtitle;
+  const grid = document.getElementById('milk-grid');
+  grid.innerHTML = '';
+  MILK_IDS.forEach(id => {
+    const card = document.createElement('button');
+    card.className = 'opt-card' + (order.milkId === id ? ' selected' : '');
+    card.innerHTML = `<span class="opt-emoji">${MILK_EMOJI[id]}</span>${t.milkLabels[id]}`;
+    card.onclick = () => {
+      order.milkId = id;
+      order.milk = t.milkLabels[id];
+      nextStep();
+    };
+    grid.appendChild(card);
+  });
+}
+
+/* ============ ШАГ: САХАР ============ */
+function renderSugarScreen(){
+  const t = T[order.lang];
+  document.getElementById('sugar-title').textContent = t.sugarTitle;
+  document.getElementById('sugar-subtitle').textContent = t.sugarSubtitle;
+  const grid = document.getElementById('sugar-grid');
+  grid.innerHTML = '';
+  [0,1,2,3].forEach(n => {
+    const card = document.createElement('button');
+    card.className = 'opt-card' + (order.sugar === n ? ' selected' : '');
+    const emoji = n === 0 ? '🚫' : '🥄'.repeat(n);
+    card.innerHTML = `<span class="opt-emoji">${emoji}</span>${t.sugarLabel(n)}`;
+    card.onclick = () => {
+      order.sugar = n;
+      order.sugarLabel = t.sugarLabel(n);
+      nextStep();
+    };
+    grid.appendChild(card);
+  });
+}
+
+/* ============ ШАГ: ВКУС ============ */
+function renderFlavorScreen(){
+  const t = T[order.lang];
+  document.getElementById('flavor-title').textContent = t.flavorTitle;
+  document.getElementById('flavor-subtitle').textContent = t.flavorSubtitle;
+  const grid = document.getElementById('flavor-grid');
+  grid.innerHTML = '';
+  const ids = secretUnlocked ? [...FLAVOR_IDS, 'dubai'] : FLAVOR_IDS;
+  ids.forEach(id => {
+    const card = document.createElement('button');
+    card.className = 'opt-card' + (order.flavorId === id ? ' selected' : '') + (id === 'dubai' ? ' secret' : '');
+    card.innerHTML = `<span class="opt-emoji">${FLAVOR_EMOJI[id]}</span>${t.flavorLabels[id]}`;
+    card.onclick = () => {
+      order.flavorId = id;
+      order.flavor = t.flavorLabels[id];
+      nextStep();
+    };
+    grid.appendChild(card);
+  });
+}
+
+/* ============ ШАГ: ИМЯ + ПОЧТА ============ */
+function renderNameScreen(){
+  const t = T[order.lang];
+  document.getElementById('name-title').textContent = t.nameTitle;
+  document.getElementById('name-subtitle').textContent = t.nameSubtitle;
+  document.getElementById('label-name').textContent = t.labelName;
+  document.getElementById('input-name').placeholder = t.placeholderName;
+  document.getElementById('error-name').textContent = t.errorName;
+  document.getElementById('label-email').textContent = t.labelEmail;
+  document.getElementById('input-email').placeholder = t.placeholderEmail;
+  document.getElementById('error-email').textContent = t.errorEmail;
+  document.getElementById('submit-btn').textContent = t.submitBtn;
+  document.getElementById('send-error').textContent = t.sendError;
+}
+
+/* ============ ВАЛИДАЦИЯ + ОТПРАВКА ============ */
+document.getElementById('submit-btn').addEventListener('click', () => {
+  const emailInput = document.getElementById('input-email');
+  const nameInput = document.getElementById('input-name');
+  let valid = true;
+
+  order.email = emailInput.value.trim();
+  order.name = nameInput.value.trim();
+
+  if (!order.email){
+    emailInput.classList.add('error');
+    document.getElementById('error-email').classList.add('show');
+    valid = false;
+  } else {
+    emailInput.classList.remove('error');
+    document.getElementById('error-email').classList.remove('show');
+  }
+
+  if (!order.name){
+    nameInput.classList.add('error');
+    document.getElementById('error-name').classList.add('show');
+    valid = false;
+  } else {
+    nameInput.classList.remove('error');
+    document.getElementById('error-name').classList.remove('show');
+  }
+
+  if (!valid) return;
+  openConfirmModal();
+});
+
+/* ============ МОДАЛКА ПОДТВЕРЖДЕНИЯ ============ */
+function openConfirmModal(){
+  const t = T[order.lang];
+  document.getElementById('modal-title').textContent = t.modalTitle;
+  document.getElementById('modal-text').textContent = t.modalText(order);
+  document.getElementById('modal-yes').textContent = t.modalYes;
+  document.getElementById('modal-no').textContent = t.modalNo;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+document.getElementById('modal-no').addEventListener('click', () => {
+  document.getElementById('modal-overlay').classList.remove('open');
+});
+
+document.getElementById('modal-yes').addEventListener('click', async () => {
+  const t = T[order.lang];
+  const btn = document.getElementById('modal-yes');
+  btn.disabled = true;
+  btn.textContent = t.sending;
+
+  try{
+    const res = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: order.name,
+        email: order.email,
+        drink: order.drink,
+        milk: order.milk,
+        sugar: order.sugar,
+        flavor: order.flavor,
+        lang: order.lang
+      })
+    });
+    if (!res.ok) throw new Error('bad response');
+
+    document.getElementById('modal-overlay').classList.remove('open');
+    document.getElementById('topbar').classList.remove('visible');
+    document.getElementById('thanks-title').textContent = t.thanksTitle;
+    document.getElementById('thanks-text').textContent = t.thanksText;
+    showScreen('screen-thanks');
+  } catch(err){
+    document.getElementById('send-error').classList.add('show');
+    document.getElementById('modal-overlay').classList.remove('open');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = t.modalYes;
+  }
+});
+
+/* ============ ПАСХАЛКА: ДВОЙНОЙ КЛИК ПО ЛОГО ============ */
+document.getElementById('brand-logo').addEventListener('dblclick', () => {
+  secretUnlocked = true;
+  const t = T[order.lang];
+  document.getElementById('secret-modal-title').textContent = t.secretModalTitle;
+  document.getElementById('secret-modal-text').textContent = t.secretModalText;
+  document.getElementById('secret-box-label').textContent = t.secretBoxLabel;
+  document.getElementById('secret-box-flavor').textContent = t.flavorLabels.dubai;
+  document.getElementById('secret-modal-overlay').classList.add('open');
+
+  if (document.getElementById('screen-flavor').classList.contains('active')){
+    renderFlavorScreen();
+  }
+});
+
+document.getElementById('secret-close').addEventListener('click', () => {
+  document.getElementById('secret-modal-overlay').classList.remove('open');
+
+  if (document.getElementById('screen-flavor').classList.contains('active')){
+    renderFlavorScreen();
+    const grid = document.getElementById('flavor-grid');
+    grid.classList.remove('flash-glow');
+    requestAnimationFrame(() => {
+      grid.classList.add('flash-glow');
+      grid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    setTimeout(() => grid.classList.remove('flash-glow'), 2400);
+  }
+});
+</script>
+</body>
+</html>
